@@ -75,9 +75,9 @@ qlmanage -r cache
 
 - Native macOS Quick Look preview extension
 - Menu bar helper app, no Dock icon
-- Headings, paragraphs, blockquotes, lists, task lists, links, inline code, bold, italic, strikethrough
-- Native AppKit table rendering with `NSTextTable`
-- Sandboxed extension with no network access required
+- Headings, paragraphs, blockquotes, lists, task lists, tables, links, inline code, bold, italic, strikethrough
+- Syntax highlighted code blocks (highlight.js, inlined — no network)
+- Sandboxed extension whose only entitlement is `com.apple.security.app-sandbox`
 - Separate Swift package that can render Markdown to self-contained HTML
 - `mdql` CLI for rendering Markdown files to HTML
 
@@ -125,13 +125,31 @@ buildable open-source project. See `AGENTS.md` for details.
 ```text
 Finder spacebar
   -> QuickLookExtension.appex
-  -> PreviewViewController
+  -> PreviewProvider (QLPreviewProvider, data-based)
   -> read Markdown file
-  -> render native NSAttributedString
-  -> display in NSTextView inside NSScrollView
+  -> MarkdownRenderer -> swift-markdown AST -> self-contained HTML
+  -> return QLPreviewReply(dataOfContentType: .html)
+  -> the system renders that HTML in its own process
 ```
 
-The extension intentionally avoids `WKWebView` because WebKit helper processes can be fragile inside Quick Look extension sandboxes.
+This is a **data-based** preview (`QLIsDataBasedPreview`): the extension returns
+HTML and never draws anything itself. Two properties follow.
+
+**No `WKWebView` in the extension.** WebKit helper processes can be fragile inside
+Quick Look extension sandboxes; here the WebView is the system's, in the system's
+process, so the extension never faces that.
+
+**Least privilege.** Because nothing is drawn locally and no local resources are
+loaded, the extension needs no file access beyond the previewed file that Quick
+Look already hands it. Its entitlements are a single `app-sandbox` — compare with
+Markdown Quick Look extensions that host their own WebView and therefore need a
+read exception over the whole home directory or the whole file system.
+
+**One parser, no second implementation.** Both the Quick Look extension and the
+`mdql` CLI go through `MarkdownRenderer` and its `HTMLMarkupVisitor`, which walks
+the swift-markdown AST. Nothing re-parses Markdown by hand, so nested emphasis,
+`**` inside inline code, escapes and bracketed link labels behave per CommonMark.
+`Examples/inline-torture.md` is the regression case for exactly those.
 
 ## Agent notes
 

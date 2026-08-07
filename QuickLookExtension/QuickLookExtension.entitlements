@@ -2,9 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Deliberately the only entitlement. A data-based preview provider draws
+	     nothing itself: it returns HTML and the system renders it. Quick Look
+	     grants read access to the previewed file through a sandbox extension, so
+	     no file-access entitlement is needed on top of the sandbox. -->
 	<key>com.apple.security.app-sandbox</key>
-	<true/>
-	<key>com.apple.security.files.user-selected.read-only</key>
 	<true/>
 </dict>
 </plist>
