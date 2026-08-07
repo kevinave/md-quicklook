@@ -62,9 +62,15 @@ cp -R .build-xcode/Build/Products/Release/MarkdownQuickLook.app /Applications/
 open /Applications/MarkdownQuickLook.app
 ```
 
-**Launching the app is what registers the extension.** Nothing else does —
-`qlmanage -r` only reloads the legacy `.qlgenerator` mechanism, which macOS
-removed for third parties in Sonoma.
+**Launching the app is what registers this copy of the extension**, and it is the
+step people skip. `qlmanage -r` does not do it: that only reloads the legacy
+`.qlgenerator` mechanism, which macOS removed for third parties in Sonoma.
+
+Note that launching is not the *only* thing that can register an appex —
+building a copy elsewhere registers that build too, and whichever happened last
+holds the bundle identifier. That is why step 2 removes previous installs and
+step 4 checks the `Path`, not just the `+`. See the registration entry in
+[`AGENTS.md`](../AGENTS.md).
 
 ## 4. Confirm registration
 
