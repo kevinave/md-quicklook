@@ -26,8 +26,12 @@ changes — several things that look like omissions are decisions.
    specific defect this project was created to remove, and it fails silently.
 4. **No size caps, no timeouts.** See `docs/decisions.md`. The platform manages
    extension lifecycle; do not re-implement that with a guessed threshold.
-5. **`LICENSE` and `THIRD_PARTY_LICENSES.md` are not edited.** Vendored assets
-   keep their notices. New vendored code means a new entry.
+5. **Existing licence notices are never removed or altered.** Every copyright
+   line already in `LICENSE`, and every entry in `THIRD_PARTY_LICENSES.md`,
+   stays exactly as it is — that is what keeps this redistributable. *Adding* is
+   fine and sometimes required: a new copyright line for a new contributor, a new
+   entry when code is vendored. The rule protects what is there, not the files
+   themselves.
 6. **Vendored assets are verified, not trusted.** `highlight.min.js` must stay
    byte-identical to an official release; the current hash is recorded in
    `docs/decisions.md`. If you update it, re-verify and update the hash.
@@ -98,13 +102,21 @@ Each of these has produced a wrong conclusion before.
 - **Xcode's GUI may refuse to launch on a beta macOS** while `xcodebuild`,
   `swift` and `clang` from the same install work fine. A failure to open Xcode is
   not a reason to abandon a build.
-- **Building a second copy anywhere on disk hijacks the installed one.** PlugInKit
-  keeps one registration per bundle identifier, and the newest build wins — so
-  building this repo in a scratch directory silently repoints the registration at
-  a path that is temporary, and previews fall back to plain text. Building to test
-  is not a read-only act. `pluginkit -mAvvv -i <id>` showing `+` is **not enough**
-  on its own: read the `Path` line and confirm it is the copy you meant.
-  To recover, unregister the stray build, delete it, relaunch the installed app,
+- **Registration follows the bundle identifier, and only one copy can hold it.**
+  Two separate things put a copy in the running: building it anywhere on disk
+  registers that build with LaunchServices, from which PlugInKit picks up the
+  embedded appex; and launching an installed app asserts the registration for
+  that copy. Either can take the identifier from the other, and the most recent
+  one wins.
+
+  The consequence is that **building to test is not a read-only act**: compiling
+  this repository in a scratch directory silently repoints the registration at a
+  temporary path, and previews fall back to plain text once that path is gone.
+  So `pluginkit -mAvvv -i <id>` showing `+` is **not enough** on its own — `+`
+  reports enablement, not location. Read the `Path` line and confirm it is the
+  copy you meant.
+
+  To recover: unregister the stray build, delete it, relaunch the installed app,
   then restart the services below.
 - **Registration changes need Finder and Quick Look restarted to take effect.**
   They cache the previous resolution, so a corrected registration keeps producing
