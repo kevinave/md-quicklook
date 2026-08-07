@@ -10,7 +10,7 @@ enum QuickLookExtensionManager {
         case unknown
     }
 
-    private static let identifier = "com.devin.markdownquicklook.QuickLookExtension"
+    private static let identifier = "com.kevinave.mdquicklook.QuickLookExtension"
 
     static var isRunningFromDiskImage: Bool {
         Bundle.main.bundleURL.path.hasPrefix("/Volumes/")

@@ -1,68 +1,109 @@
-# AGENTS.md
+# Working in this repository
 
-This repo builds a macOS Quick Look preview extension for Markdown files.
+Read this before changing anything here. It records the invariants that make this
+project what it is, and the platform traps that cost real time to rediscover.
 
-## What matters
+## What this is
 
-- Default branch: `master`.
-- Generate the Xcode project with `xcodegen generate`; do not commit generated `.xcodeproj` files.
-- The Quick Look extension is in `QuickLookExtension/`.
-- The host app is in `App/`.
-- The reusable Swift package / HTML renderer is in `Sources/MarkdownRenderer/`.
-- The command-line renderer is `Sources/mdql/`.
-- Tests live in `Tests/MarkdownRendererTests/`.
+A Quick Look preview extension for Markdown, a menu bar app that exists only to
+host and register it, and `mdql`, a CLI running the same renderer.
 
-## Website / landing page (important)
+Source of truth for *why* the design looks like this:
+[`docs/decisions.md`](docs/decisions.md). Read it before proposing architecture
+changes — several things that look like omissions are decisions.
 
-The public landing page at https://quicklookmd.com is **not** part of `master`.
+## Invariants — do not break these without saying so explicitly
 
-- `master` is kept clean as the open-source, buildable project. It contains no
-  website source. Do **not** add a `docs/` folder or a Pages-deploy workflow back
-  to `master`.
-- The landing page (`index.html`, `styles.css`, `assets/`, `CNAME`, `favicon.png`)
-  lives only on the [`gh-pages`](https://github.com/jzone3/markdown-quicklook/tree/gh-pages)
-  branch. GitHub Pages serves that branch directly (Settings → Pages →
-  Source = "Deploy from a branch: gh-pages"), which is why the `CNAME` for the
-  custom domain lives there.
-- To change the website, edit and commit on the `gh-pages` branch. Changes go
-  live on push — there is no separate build step and nothing to mirror.
+1. **The extension draws nothing.** It is a data-based provider
+   (`QLIsDataBasedPreview`) returning HTML; the system renders it. Introducing a
+   `WKWebView` here would force a file-read entitlement and undo the project's
+   main property.
+2. **`QuickLookExtension.entitlements` stays at `app-sandbox` alone.** If a change
+   seems to need another entitlement, the change is wrong, or it is a real
+   trade-off that has to be raised rather than absorbed.
+3. **One Markdown implementation.** Everything goes through `MarkdownRenderer`
+   and the swift-markdown AST. Never hand-parse Markdown syntax — that is the
+   specific defect this project was created to remove, and it fails silently.
+4. **No size caps, no timeouts.** See `docs/decisions.md`. The platform manages
+   extension lifecycle; do not re-implement that with a guessed threshold.
+5. **`LICENSE` and `THIRD_PARTY_LICENSES.md` are not edited.** Vendored assets
+   keep their notices. New vendored code means a new entry.
+6. **Vendored assets are verified, not trusted.** `highlight.min.js` must stay
+   byte-identical to an official release; the current hash is recorded in
+   `docs/decisions.md`. If you update it, re-verify and update the hash.
 
-## Install guidance
-
-For end-user install work, follow `agent-instructions/INSTALL.md`. Prefer asking Devin or another coding agent to run those steps because local signing, extension registration, and Quick Look cache resets are easy to get wrong manually.
-
-## Build and test
+## Build, test, verify
 
 ```bash
-brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+swift test                                        # renderer tests, no Finder
+swift run mdql Examples/inline-torture.md out.html # inspect rendering directly
+```
+
+Full app build (Xcode's GUI is not required, only its command line tools):
+
+```bash
 xcodegen generate
-swift test
+xcodebuild -project MarkdownQuickLook.xcodeproj -scheme MarkdownQuickLook \
+  -configuration Release -derivedDataPath .build-xcode \
+  ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" build
 ```
 
-For the macOS app/extension build, a local Apple Development certificate is usually needed:
+`ARCHS=arm64` matters: without it the x86_64 slice is built too and the wait
+doubles for nothing.
+
+Install over a previous build — unregister first, or two copies compete:
 
 ```bash
-xcodebuild \
-  -project MarkdownQuickLook.xcodeproj \
-  -scheme MarkdownQuickLook \
-  -configuration Debug \
-  -derivedDataPath .derivedData-signed \
-  build
+osascript -e 'quit app "MarkdownQuickLook"'
+pluginkit -r /Applications/MarkdownQuickLook.app/Contents/PlugIns/QuickLookExtension.appex
+trash /Applications/MarkdownQuickLook.app
+cp -R .build-xcode/Build/Products/Release/MarkdownQuickLook.app /Applications/
+open /Applications/MarkdownQuickLook.app        # launching is what registers it
+pluginkit -mAvvv -i com.kevinave.mdquicklook.QuickLookExtension
 ```
 
-If signing fails, set a Team manually on both `MarkdownQuickLook` and `QuickLookExtension` in Xcode.
+A leading `+` on the last command means registered and enabled.
 
-## Implementation notes
+## Verification
 
-- The Quick Look extension renders Markdown to native AppKit attributed text in `NSTextView`.
-- Tables use native `NSTextTable` / `NSTextTableBlock` cells.
-- The extension intentionally avoids `WKWebView`; WebKit helper processes can crash or be denied sandbox permissions inside Quick Look extensions.
-- The Swift package still supports rendering Markdown to self-contained HTML for the host app and `mdql` CLI.
+`swift test` and `mdql` cover the renderer. They do not cover whether Quick Look
+loads the extension — nothing automated does, for the reasons below. **Ask the
+user to press space on a file and report, or send a screenshot.** Do not claim
+the integration works on the strength of unit tests.
 
-## Do not commit
+`Examples/inline-torture.md` is the regression file for inline parsing. Every
+case in it has a stated expectation; check the rendered output against those
+after touching anything in the render path.
 
-- `.derivedData*/`
-- `.build/`
-- `.swiftpm/`
-- generated `.xcodeproj`
-- local `test-files/`
+## Platform traps
+
+Each of these has produced a wrong conclusion before.
+
+- **`qlmanage` is not a reliable oracle.** On macOS 27 betas it crashes in its
+  own process (`key cannot be nil`, on `com.apple.quicklook.qlextension.request`)
+  while servicing extension requests. That crash says nothing about the
+  extension. `qlmanage -p -o` also cannot serialize view-controller previews, so
+  "did not produce any preview" is not evidence of failure either.
+- **`QLPreviewReply` and `QLFilePreviewRequest` are in `QuickLookUI`**, not
+  `QuickLook`. Importing only the latter fails with "cannot find type".
+- **Launching the host app is what registers the extension.** `qlmanage -r`
+  reloads the legacy `.qlgenerator` mechanism, which macOS removed for third
+  parties in Sonoma; it does nothing here.
+- **Do not strip the quarantine attribute** to work around Gatekeeper. For a
+  notarized app that attribute is what lets Gatekeeper check the ticket, so
+  removing it discards the evidence of legitimacy rather than supplying it.
+- **Ad-hoc signed extensions do work** locally, macOS 27 betas included. A
+  Developer ID is only needed to hand the app to someone else.
+- **Xcode's GUI may refuse to launch on a beta macOS** while `xcodebuild`,
+  `swift` and `clang` from the same install work fine. A failure to open Xcode is
+  not a reason to abandon a build.
+
+## Conventions
+
+- Comments explain **why**, especially where the code is deliberately absent —
+  a future reader should not "fix" the missing size cap.
+- Do not leave tombstones. If something recorded here becomes untrue, correct it
+  in place rather than appending a note that the old text was wrong.
+- Changes to the render path come with tests. `Tests/MarkdownRendererTests` runs
+  without Finder, Xcode, or a signing identity.

@@ -1,150 +1,130 @@
-# Agent Install Instructions
+# Install runbook
 
-This guide is written for Devin or another coding agent installing Markdown QuickLook on a user's Mac.
+A mechanical checklist for building this from source and confirming Quick Look
+actually picked it up. Written for an agent doing the install on the user's Mac,
+but it reads fine by hand.
 
-## Goal
+Conventions and invariants live in [`AGENTS.md`](../AGENTS.md); read that first
+if you are also going to change code.
 
-Build the macOS app, install it to the user's `~/Applications` folder, register the bundled Quick Look extension, enable it, and verify Markdown files preview with the spacebar.
-
-## Requirements
-
-- macOS 12 or later
-- Xcode installed
-- Homebrew available
-- A usable local Apple Development signing certificate, or permission to fall back to Xcode manual signing
-- Repo checked out on `master`
-
-## Fast path: build and install from Terminal
-
-Run from the repository root:
+## 0. Prerequisites
 
 ```bash
-brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+xcode-select -p                 # any developer directory is fine
+xcodebuild -version             # Xcode's GUI does not need to open
+command -v xcodegen || brew install xcodegen
+```
+
+On a beta macOS the Xcode app may refuse to launch while its command line tools
+work normally. That is not a blocker for this build.
+
+## 1. Build
+
+```bash
+cd <repo>
 xcodegen generate
+xcodebuild -project MarkdownQuickLook.xcodeproj -scheme MarkdownQuickLook \
+  -configuration Release -derivedDataPath .build-xcode \
+  ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" build
 ```
 
-Discover a local signing team ID:
+Expect `** BUILD SUCCEEDED **` and `Signing Identity: "Sign to Run Locally"`.
+
+`CODE_SIGN_IDENTITY="-"` is ad-hoc signing. It is sufficient on the machine that
+built the app. `security find-identity -v -p codesigning` reporting zero
+identities is normal and not an error.
+
+Omitting `ARCHS=arm64` builds an x86_64 slice nobody uses and doubles the wait.
+
+## 2. Replace any previous install
+
+Unregister before removing, or a stale registration lingers and can compete with
+the new one.
 
 ```bash
-TEAM_ID="$(
-  security find-certificate -c 'Apple Development' -p \
-    | openssl x509 -noout -subject \
-    | sed -n 's/.* OU=\([^,]*\).*/\1/p' \
-    | head -1
-)"
-
-echo "$TEAM_ID"
+osascript -e 'quit app "MarkdownQuickLook"' 2>/dev/null
+pluginkit -r /Applications/MarkdownQuickLook.app/Contents/PlugIns/QuickLookExtension.appex 2>/dev/null
+trash /Applications/MarkdownQuickLook.app 2>/dev/null
 ```
 
-If `TEAM_ID` is empty, stop and ask the user to open the project in Xcode and choose a signing team on both targets.
-
-Build the app and extension:
+If the previous install used a different bundle identifier, unregister that one
+by id as well:
 
 ```bash
-xcodebuild \
-  -project MarkdownQuickLook.xcodeproj \
-  -scheme MarkdownQuickLook \
-  -configuration Debug \
-  -derivedDataPath .derivedData-signed \
-  build \
-  CODE_SIGN_STYLE=Manual \
-  CODE_SIGN_IDENTITY='Apple Development' \
-  DEVELOPMENT_TEAM="$TEAM_ID" \
-  PROVISIONING_PROFILE_SPECIFIER=
+pluginkit -m -p com.apple.quicklook.preview -vvv | grep -i quicklook
 ```
 
-Install to the user's Applications folder:
+## 3. Install and register
 
 ```bash
-mkdir -p "$HOME/Applications"
-ditto .derivedData-signed/Build/Products/Debug/MarkdownQuickLook.app \
-  "$HOME/Applications/MarkdownQuickLook.app"
+cp -R .build-xcode/Build/Products/Release/MarkdownQuickLook.app /Applications/
+open /Applications/MarkdownQuickLook.app
 ```
 
-Register and enable the Quick Look extension:
+**Launching the app is what registers the extension.** Nothing else does —
+`qlmanage -r` only reloads the legacy `.qlgenerator` mechanism, which macOS
+removed for third parties in Sonoma.
+
+## 4. Confirm registration
 
 ```bash
-open -gj "$HOME/Applications/MarkdownQuickLook.app"
-sleep 2
-pluginkit -e use -i com.devin.markdownquicklook.QuickLookExtension || true
-qlmanage -r
-qlmanage -r cache
-pluginkit -m -v | grep -i com.devin.markdownquicklook
+pluginkit -mAvvv -i com.kevinave.mdquicklook.QuickLookExtension
 ```
 
-A successful registration usually prints something like:
+A leading `+` means registered **and** enabled. A `-` means present but disabled;
+enable it in System Settings → General → Login Items & Extensions → Quick Look.
 
-```text
-+    com.devin.markdownquicklook.QuickLookExtension(...)
-```
-
-## Manual fallback
-
-If signing fails:
-
-1. Run `open MarkdownQuickLook.xcodeproj`.
-2. Select the `MarkdownQuickLook` target and set a signing Team.
-3. Select the `QuickLookExtension` target and set the same signing Team.
-4. Build and Run the `MarkdownQuickLook` scheme once.
-5. Open System Settings → General → Login Items & Extensions → Quick Look.
-6. Enable **Markdown Preview**.
-
-## Test after install
-
-Create or use any Markdown file, then either:
+Confirm no other extension claims the same type:
 
 ```bash
-qlmanage -p Examples/sample.md
+pluginkit -mAvvv -p com.apple.quicklook.preview | grep -v com.apple
 ```
 
-or open Finder, select a `.md` file, and press spacebar.
+## 5. Verify rendering
 
-If the old preview remains cached, run:
-
-```bash
-qlmanage -r
-qlmanage -r cache
-killall quicklookd 2>/dev/null || true
-```
-
-Then close and reopen the Quick Look preview.
-
-## Troubleshooting
-
-### Extension appears twice
-
-This usually means macOS discovered both a DerivedData build and the installed app. Keep the installed app at `~/Applications/MarkdownQuickLook.app`; ignore or remove generated local `.derivedData*` folders if needed. Do not commit generated build outputs.
-
-### Preview says the extension failed
-
-Check recent logs:
-
-```bash
-log show --last 5m --style compact \
-  --predicate 'process == "QuickLookExtension" OR eventMessage CONTAINS[c] "com.devin.markdownquicklook"' \
-  | tail -120
-```
-
-The current extension intentionally uses native AppKit rendering instead of `WKWebView`, because WebKit helper processes can fail inside Quick Look extension sandboxes.
-
-### Plain text preview still appears
-
-Make sure **Markdown Preview** is enabled in System Settings → General → Login Items & Extensions → Quick Look, then reset Quick Look caches.
-
-## Verification commands for agents
-
-Run these before claiming success:
+Check the renderer without involving Finder:
 
 ```bash
 swift test
-xcodebuild \
-  -project MarkdownQuickLook.xcodeproj \
-  -scheme MarkdownQuickLook \
-  -configuration Debug \
-  -derivedDataPath .derivedData-signed \
-  build \
-  CODE_SIGN_STYLE=Manual \
-  CODE_SIGN_IDENTITY='Apple Development' \
-  DEVELOPMENT_TEAM="$TEAM_ID" \
-  PROVISIONING_PROFILE_SPECIFIER=
+swift run mdql Examples/inline-torture.md /tmp/torture.html
 ```
+
+`Examples/inline-torture.md` states an expectation for each case; compare.
+
+## 6. Verify integration — ask the user
+
+**Nothing automated covers whether Quick Look loads the extension.**
+
+- `qlmanage -p -o` cannot serialize every preview kind, so an empty result proves
+  nothing.
+- On macOS 27 betas `qlmanage` crashes in its own process (`key cannot be nil`,
+  on `com.apple.quicklook.qlextension.request`). That is the tool failing, not
+  the extension.
+
+So: ask the user to select a `.md` file in Finder, press space, and report what
+they see — a screenshot is better. Do not report the install as working on the
+strength of steps 1–5 alone.
+
+Useful files to suggest: `Examples/inline-torture.md` for inline parsing, and any
+document with YAML front matter for the metadata block.
+
+## Troubleshooting
+
+**Nothing happens on space.** Check step 4 first. If the extension is absent from
+the list entirely, move the app to the Trash, put it back in `/Applications`, and
+launch it again — that forces re-registration.
+
+**The preview shows plain text.** Another extension may have claimed the type, or
+none matched. Check what the file's type actually resolves to:
+
+```bash
+mdls -name kMDItemContentType <file>.md
+```
+
+This project handles `net.daringfireball.markdown`. Other extensions such as
+`.mdx` or `.qmd` resolve to `dyn.*` identifiers and are not handled; see the
+trade-offs section of [`docs/decisions.md`](../docs/decisions.md).
+
+**Previews are stale after a rebuild.** Repeat step 2 in full. The unregister is
+the part that gets skipped and is usually the cause.

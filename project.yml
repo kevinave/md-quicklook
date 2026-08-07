@@ -9,7 +9,7 @@ name: MarkdownQuickLook
 # spec is the single source of truth so the project is fully reproducible.
 
 options:
-  bundleIdPrefix: com.devin.markdownquicklook
+  bundleIdPrefix: com.kevinave.mdquicklook
   deploymentTarget:
     macOS: "12.0"
   createIntermediateGroups: true
@@ -60,7 +60,7 @@ targets:
         embed: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.devin.markdownquicklook
+        PRODUCT_BUNDLE_IDENTIFIER: com.kevinave.mdquicklook
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/MarkdownQuickLook.entitlements
         COMBINE_HIDPI_IMAGES: true
@@ -80,7 +80,7 @@ targets:
         product: MarkdownRenderer
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.devin.markdownquicklook.QuickLookExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.kevinave.mdquicklook.QuickLookExtension
         INFOPLIST_FILE: QuickLookExtension/Info.plist
         CODE_SIGN_ENTITLEMENTS: QuickLookExtension/QuickLookExtension.entitlements
         # The principal class is "<ModuleName>.<ClassName>".

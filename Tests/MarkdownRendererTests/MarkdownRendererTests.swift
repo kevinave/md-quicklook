@@ -87,8 +87,8 @@ final class MarkdownRendererTests: XCTestCase {
     // MARK: - Links & images
 
     func testLinkRendering() {
-        let html = fragment("[Devin](https://devin.ai)")
-        XCTAssertTrue(html.contains("<a href=\"https://devin.ai\">Devin</a>"), html)
+        let html = fragment("[Example](https://example.com)")
+        XCTAssertTrue(html.contains("<a href=\"https://example.com\">Example</a>"), html)
     }
 
     func testImageRendering() {
