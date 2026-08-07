@@ -98,6 +98,22 @@ Each of these has produced a wrong conclusion before.
 - **Xcode's GUI may refuse to launch on a beta macOS** while `xcodebuild`,
   `swift` and `clang` from the same install work fine. A failure to open Xcode is
   not a reason to abandon a build.
+- **Building a second copy anywhere on disk hijacks the installed one.** PlugInKit
+  keeps one registration per bundle identifier, and the newest build wins — so
+  building this repo in a scratch directory silently repoints the registration at
+  a path that is temporary, and previews fall back to plain text. Building to test
+  is not a read-only act. `pluginkit -mAvvv -i <id>` showing `+` is **not enough**
+  on its own: read the `Path` line and confirm it is the copy you meant.
+  To recover, unregister the stray build, delete it, relaunch the installed app,
+  then restart the services below.
+- **Registration changes need Finder and Quick Look restarted to take effect.**
+  They cache the previous resolution, so a corrected registration keeps producing
+  the old (broken) preview until:
+  ```bash
+  killall -9 QuickLookUIService quicklookd 2>/dev/null
+  killall Finder
+  ```
+  Skipping this makes a completed fix look like a failed one.
 
 ## Conventions
 
