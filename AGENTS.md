@@ -26,12 +26,14 @@ changes — several things that look like omissions are decisions.
    specific defect this project was created to remove, and it fails silently.
 4. **No size caps, no timeouts.** See `docs/decisions.md`. The platform manages
    extension lifecycle; do not re-implement that with a guessed threshold.
-5. **Existing licence notices are never removed or altered.** Every copyright
-   line already in `LICENSE`, and every entry in `THIRD_PARTY_LICENSES.md`,
-   stays exactly as it is — that is what keeps this redistributable. *Adding* is
-   fine and sometimes required: a new copyright line for a new contributor, a new
-   entry when code is vendored. The rule protects what is there, not the files
-   themselves.
+5. **Copyright lines and licence texts are never removed or altered.** That
+   specific content is what keeps this redistributable, so it survives verbatim
+   wherever it appears. Everything around it is expected to change: add a
+   copyright line for a new contributor, add an entry to
+   `THIRD_PARTY_LICENSES.md` when code is vendored, and update an existing
+   entry's version, hash and provenance when the thing it describes is upgraded —
+   stale provenance is its own defect. The rule protects the notices, not the
+   files and not the metadata around them.
 6. **Vendored assets are verified, not trusted.** `highlight.min.js` must stay
    byte-identical to an official release; the current hash is recorded in
    `docs/decisions.md`. If you update it, re-verify and update the hash.
