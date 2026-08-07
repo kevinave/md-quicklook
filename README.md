@@ -2,7 +2,11 @@
 
 Press the spacebar on a `.md` file in Finder and read it rendered, not as source.
 
-![A Markdown file previewed in Finder: rendered headings, a blockquote, and a fenced code block with syntax highlighting, in dark mode](docs/images/preview.png)
+![Selecting Markdown files in Finder and pressing space to see them rendered, with headings, code blocks, tables and task lists](assets/markdown-quicklook-demo.gif)
+
+> The recording above is inherited from the upstream project and predates the
+> rewrite, so it shows the older AppKit rendering rather than the current one.
+> It is accurate about the interaction, not about the typography.
 
 macOS has shipped the `net.daringfireball.markdown` type identifier for years but
 has never shipped anything that renders it, so Quick Look falls back to plain
