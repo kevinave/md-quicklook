@@ -78,8 +78,23 @@ step 4 checks the `Path`, not just the `+`. See the registration entry in
 pluginkit -mAvvv -i com.kevinave.mdquicklook.QuickLookExtension
 ```
 
-A leading `+` means registered **and** enabled. A `-` means present but disabled;
-enable it in System Settings → General → Login Items & Extensions → Quick Look.
+Check two things in that output, not one.
+
+**The leading marker.** `+` means registered and enabled. `-` means present but
+disabled; enable it in System Settings → General → Login Items & Extensions →
+Quick Look.
+
+**The `Path` line.** It must be inside `/Applications/MarkdownQuickLook.app`. A
+`+` on its own does not tell you which copy holds the identifier, so if some
+other build claimed it — a build in a scratch directory is enough — this step
+passes while the preview keeps using a copy that may not survive the day. When
+the path is wrong, go back to step 2, unregister and delete that copy, then
+repeat step 3.
+
+```bash
+pluginkit -mAvvv -i com.kevinave.mdquicklook.QuickLookExtension | grep Path
+# expect: Path = /Applications/MarkdownQuickLook.app/Contents/PlugIns/QuickLookExtension.appex
+```
 
 Confirm no other extension claims the same type:
 
