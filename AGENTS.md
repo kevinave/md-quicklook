@@ -1,7 +1,8 @@
 # Working in this repository
 
-Read this before changing anything here. It records the invariants that make this
-project what it is, and the platform traps that cost real time to rediscover.
+Read this before changing anything here. It records what the current design buys
+and what changing it would cost, plus the platform traps that cost real time to
+rediscover.
 
 ## What this is
 
@@ -12,31 +13,41 @@ Source of truth for *why* the design looks like this:
 [`docs/decisions.md`](docs/decisions.md). Read it before proposing architecture
 changes — several things that look like omissions are decisions.
 
-## Invariants — do not break these without saying so explicitly
+## What the current shape costs, if you change it
 
-1. **The extension draws nothing.** It is a data-based provider
-   (`QLIsDataBasedPreview`) returning HTML; the system renders it. Introducing a
-   `WKWebView` here would force a file-read entitlement and undo the project's
-   main property.
-2. **`QuickLookExtension.entitlements` stays at `app-sandbox` alone.** If a change
-   seems to need another entitlement, the change is wrong, or it is a real
-   trade-off that has to be raised rather than absorbed.
-3. **One Markdown implementation.** Everything goes through `MarkdownRenderer`
-   and the swift-markdown AST. Never hand-parse Markdown syntax — that is the
-   specific defect this project was created to remove, and it fails silently.
-4. **No size caps, no timeouts.** See `docs/decisions.md`. The platform manages
-   extension lifecycle; do not re-implement that with a guessed threshold.
-5. **Copyright lines and licence texts are never removed or altered.** That
-   specific content is what keeps this redistributable, so it survives verbatim
-   wherever it appears. Everything around it is expected to change: add a
-   copyright line for a new contributor, add an entry to
-   `THIRD_PARTY_LICENSES.md` when code is vendored, and update an existing
-   entry's version, hash and provenance when the thing it describes is upgraded —
-   stale provenance is its own defect. The rule protects the notices, not the
-   files and not the metadata around them.
-6. **Vendored assets are verified, not trusted.** `highlight.min.js` must stay
-   byte-identical to an official release; the current hash is recorded in
-   `docs/decisions.md`. If you update it, re-verify and update the hash.
+Nothing here is a prohibition. These are the three places where a change that
+looks local turns out to have a price attached, so that the price is known before
+it is paid rather than after. `docs/decisions.md` has the longer reasoning.
+
+**Putting a `WKWebView` in the extension costs a file entitlement.** The
+extension is a data-based provider (`QLIsDataBasedPreview`): it returns HTML and
+the system renders it, which is why it asks for nothing beyond the file Quick
+Look already hands over. Draw locally and local resources have to be loaded
+locally, which means a read exception over the home directory or the file system
+— that is what comparable extensions carry. Worth it for local image support,
+perhaps; worth knowing either way.
+
+**Parsing Markdown by hand fails silently.** Everything goes through
+`MarkdownRenderer` and the swift-markdown AST. The extension previously
+re-implemented inline syntax with string indices, and the result was not a crash
+but a preview that quietly disagreed with the file — wrong nested emphasis, `**`
+eaten inside inline code, escapes rendered literally. If a second parsing path
+appears, that is the failure to expect.
+
+**The absence of a size cap is deliberate.** It reads like an oversight, so it
+tends to get "fixed". Quick Look extensions are separate XPC processes the system
+already terminates when they are slow, and a cap here overrides that with a
+guessed threshold — one that could only ever be half informed, since HTML layout
+and highlight.js run on the far side of XPC. A previous cap also traded a loud
+failure (slow) for a quiet one (a document that stops early).
+
+One genuine external obligation, from MIT rather than from anyone's preference:
+**copyright lines and licence texts survive verbatim wherever they appear.**
+Everything around them is expected to change — add a copyright line for a new
+contributor, add a `THIRD_PARTY_LICENSES.md` entry when code is vendored, update
+an entry's version, hash and provenance when the thing it describes is upgraded.
+Stale provenance is its own defect. The obligation covers the notices, not the
+files and not the metadata around them.
 
 ## Build, test, verify
 

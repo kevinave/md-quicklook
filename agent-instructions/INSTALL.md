@@ -4,8 +4,8 @@ A mechanical checklist for building this from source and confirming Quick Look
 actually picked it up. Written for an agent doing the install on the user's Mac,
 but it reads fine by hand.
 
-Conventions and invariants live in [`AGENTS.md`](../AGENTS.md); read that first
-if you are also going to change code.
+Conventions, and what the current design would cost to change, live in
+[`AGENTS.md`](../AGENTS.md); read that first if you are also going to change code.
 
 ## 0. Prerequisites
 
