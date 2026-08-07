@@ -29,13 +29,55 @@ public struct MarkdownRenderingOptions {
 public enum MarkdownRenderer {
 
     /// Renders just the HTML body fragment (no `<html>`, CSS, or JS).
+    ///
+    /// A leading YAML front matter block is removed before parsing. See
+    /// ``splitFrontMatter(from:)`` for why.
     public static func renderHTMLFragment(
         from markdown: String,
         options: MarkdownRenderingOptions = .default
     ) -> String {
-        let document = Document(parsing: markdown, options: [.parseBlockDirectives])
+        let document = Document(
+            parsing: splitFrontMatter(from: markdown).body,
+            options: [.parseBlockDirectives]
+        )
         var visitor = HTMLMarkupVisitor(allowsRawHTML: options.allowsRawHTML)
         return visitor.visit(document)
+    }
+
+    /// Splits a leading YAML front matter block off the Markdown body.
+    ///
+    /// Front matter is a Jekyll/Hugo convention, not CommonMark. Left in place,
+    /// `---\ntitle: x\n---` parses as a thematic break followed by a *setext*
+    /// heading — the trailing `---` underlines the preceding lines — so the
+    /// metadata renders as an oversized `<h2>` above the document.
+    ///
+    /// The block is returned verbatim and deliberately **not** parsed as YAML.
+    /// Rendering it as-is still shows what the reader wants from a preview (which
+    /// post, what date) without this renderer taking on YAML's semantics —
+    /// nesting, multi-line scalars, quoting, comments — which it would then own
+    /// forever for the sake of a header block.
+    ///
+    /// Both `---` and `...` are accepted as terminators, per the YAML spec. An
+    /// unterminated block is not front matter and is left alone.
+    static func splitFrontMatter(from markdown: String) -> (frontMatter: String?, body: String) {
+        func withoutCR(_ line: String) -> String {
+            line.hasSuffix("\r") ? String(line.dropLast()) : line
+        }
+
+        let lines = markdown.components(separatedBy: "\n")
+        guard let first = lines.first, withoutCR(first) == "---" else {
+            return (nil, markdown)
+        }
+
+        for index in 1..<lines.count {
+            let line = withoutCR(lines[index])
+            guard line == "---" || line == "..." else { continue }
+            let block = lines[1..<index].map(withoutCR).joined(separator: "\n")
+            let body = lines[(index + 1)...].joined(separator: "\n")
+            return (block.isEmpty ? nil : block, body)
+        }
+
+        return (nil, markdown)
     }
 
     /// Renders a complete, self-contained HTML document with inlined CSS/JS.
@@ -44,8 +86,13 @@ public enum MarkdownRenderer {
         title: String = "Markdown Preview",
         options: MarkdownRenderingOptions = .default
     ) -> String {
-        let body = renderHTMLFragment(from: markdown, options: options)
+        let (frontMatter, markdownBody) = splitFrontMatter(from: markdown)
+        let body = renderHTMLFragment(from: markdownBody, options: options)
         let escapedTitle = HTMLEscaping.escapeText(title)
+
+        let header = frontMatter.map {
+            "<div class=\"front-matter\"><pre>\(HTMLEscaping.escapeText($0))</pre></div>\n"
+        } ?? ""
 
         var styles = ""
         styles += "<style>\n\(BundledAsset.githubMarkdownCSS)\n</style>\n"
@@ -70,7 +117,7 @@ public enum MarkdownRenderer {
         \(styles)</head>
         <body>
         <article class="markdown-body">
-        \(body)
+        \(header)\(body)
         </article>
         \(scripts)</body>
         </html>
@@ -94,6 +141,29 @@ public enum MarkdownRenderer {
         background-color: transparent;
     }
     .markdown-body .anchor { display: none; }
+    /* Front matter: present but visibly secondary to the document itself. */
+    .markdown-body .front-matter {
+        margin: 0 0 22px;
+        padding: 9px 13px;
+        border-left: 3px solid #d0d7de;
+        border-radius: 0 5px 5px 0;
+        background-color: rgba(127, 127, 127, 0.07);
+    }
+    .markdown-body .front-matter pre {
+        margin: 0;
+        padding: 0;
+        background: none;
+        border: 0;
+        font-size: 0.8em;
+        line-height: 1.6;
+        color: #57606a;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+    @media (prefers-color-scheme: dark) {
+        .markdown-body .front-matter { border-left-color: #30363d; }
+        .markdown-body .front-matter pre { color: #8b949e; }
+    }
     @media (max-width: 767px) {
         .markdown-body { padding: 16px; }
     }

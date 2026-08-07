@@ -143,4 +143,57 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("hljs"), "highlight.js should be embedded")
         XCTAssertTrue(html.contains("prefers-color-scheme: dark"), html)
     }
+
+    // MARK: - YAML front matter
+
+    private static let sampleFrontMatter = "---\ntitle: Hello\ndate: 2026-08-07\n---\n\n# Body\n"
+
+    func testFrontMatterIsSplitOffInsteadOfBecomingAHeading() {
+        let (block, body) = MarkdownRenderer.splitFrontMatter(from: Self.sampleFrontMatter)
+        XCTAssertEqual(block, "title: Hello\ndate: 2026-08-07")
+        XCTAssertEqual(body, "\n# Body\n")
+
+        // The regression this guards: `---` … `---` used to parse as a thematic
+        // break plus a setext heading, i.e. an oversized <h2> full of metadata.
+        let html = fragment(Self.sampleFrontMatter)
+        XCTAssertFalse(html.contains("title: Hello"), html)
+        XCTAssertFalse(html.contains("<hr"), html)
+        XCTAssertTrue(html.contains("<h1 id=\"body\">"), html)
+    }
+
+    func testFrontMatterIsRenderedVerbatimInItsOwnBlock() {
+        let html = MarkdownRenderer.renderFullHTMLDocument(from: Self.sampleFrontMatter)
+        XCTAssertTrue(html.contains("<div class=\"front-matter\"><pre>"), html)
+        XCTAssertTrue(html.contains("title: Hello"), html)
+        XCTAssertTrue(html.contains(".front-matter"), "front matter styling should be present")
+    }
+
+    func testFrontMatterAcceptsDotDotDotTerminator() {
+        let (block, body) = MarkdownRenderer.splitFrontMatter(from: "---\na: 1\n...\ntext\n")
+        XCTAssertEqual(block, "a: 1")
+        XCTAssertEqual(body, "text\n")
+    }
+
+    func testFrontMatterIsEscapedRatherThanInjected() {
+        let html = MarkdownRenderer.renderFullHTMLDocument(from: "---\ntitle: <script>x</script>\n---\n\nBody\n")
+        XCTAssertFalse(html.contains("<script>x</script>"), html)
+        XCTAssertTrue(html.contains("&lt;script&gt;"), html)
+    }
+
+    func testUnterminatedBlockIsNotTreatedAsFrontMatter() {
+        let source = "---\nnot really front matter\n\n# Heading\n"
+        let (block, body) = MarkdownRenderer.splitFrontMatter(from: source)
+        XCTAssertNil(block)
+        XCTAssertEqual(body, source)
+    }
+
+    func testThematicBreakInBodyIsUntouched() {
+        let html = fragment("Intro\n\n---\n\nAfter the rule\n")
+        XCTAssertTrue(html.contains("<hr"), html)
+    }
+
+    func testCRLFFrontMatterIsRecognised() {
+        let (block, _) = MarkdownRenderer.splitFrontMatter(from: "---\r\ntitle: Hi\r\n---\r\n\r\nBody\r\n")
+        XCTAssertEqual(block, "title: Hi")
+    }
 }

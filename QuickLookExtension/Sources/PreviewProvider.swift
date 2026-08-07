@@ -23,10 +23,13 @@ import MarkdownRenderer
 ///    single `com.apple.security.app-sandbox`.
 final class PreviewProvider: QLPreviewProvider, QLPreviewingController {
 
-    /// Files above this size are truncated before rendering. A Quick Look preview
-    /// is a glance, not a reader, and parsing a multi-megabyte document would
-    /// block the preview from appearing.
-    private static let maxBytes = 4 * 1024 * 1024
+    // No size limit, on purpose. Quick Look extensions are separate XPC processes
+    // whose lifecycle the system manages: a slow one is terminated without taking
+    // Finder with it. Capping input here would override a maintained platform
+    // policy with a guessed threshold — and the guess could only ever be half
+    // informed, since HTML layout and highlight.js run on the far side of XPC
+    // where this process cannot measure them. A preview that shows part of a
+    // document is also a worse failure than one that is merely slow.
 
     func providePreview(for request: QLFilePreviewRequest) async throws -> QLPreviewReply {
         let fileURL = request.fileURL
@@ -51,15 +54,12 @@ final class PreviewProvider: QLPreviewProvider, QLPreviewingController {
 
     // MARK: - Helpers
 
-    /// Decodes the file, preferring UTF-8 and falling back through the encodings
+    /// Reads the file, preferring UTF-8 and falling back through the encodings
     /// that actually show up in the wild — including GB18030, so Markdown written
     /// on Simplified Chinese systems previews instead of turning into mojibake.
-    /// A preview should never fail purely because of text encoding.
+    /// A preview should never fail purely over text encoding.
     private static func readMarkdown(at url: URL) throws -> String {
-        var data = try Data(contentsOf: url)
-        if data.count > maxBytes {
-            data = data.prefix(maxBytes)
-        }
+        let data = try Data(contentsOf: url)
 
         if let utf8 = String(data: data, encoding: .utf8) {
             return utf8
