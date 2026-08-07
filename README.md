@@ -2,6 +2,8 @@
 
 Press the spacebar on a `.md` file in Finder and read it rendered, not as source.
 
+![A Markdown file previewed in Finder: rendered headings, a blockquote, and a fenced code block with syntax highlighting, in dark mode](docs/images/preview.png)
+
 macOS has shipped the `net.daringfireball.markdown` type identifier for years but
 has never shipped anything that renders it, so Quick Look falls back to plain
 text. This is a Quick Look preview extension that fills that gap, built to hold
@@ -12,6 +14,10 @@ as little of its own machinery as possible.
 A single Quick Look extension, plus a small menu bar app that exists to host and
 register it, plus `mdql` — a command line tool that runs the same renderer, which
 is what makes the rendering testable without Finder in the loop.
+
+The repository is `md-quicklook`; the app it builds is `MarkdownQuickLook.app`
+and the bundle identifier is `com.kevinave.mdquicklook`. Those spellings are
+deliberate, not leftovers.
 
 - Rendered previews for `.md` and `.markdown`: headings, tables, task lists,
   nested blockquotes, footnotes, GitHub-flavoured everything
