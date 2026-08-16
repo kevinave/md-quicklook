@@ -12,6 +12,7 @@ as possible — it returns HTML and draws nothing, so its only entitlement is `a
 [![macOS](https://img.shields.io/badge/macOS-13+-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![swift-markdown](https://img.shields.io/badge/parser-swift--markdown-orange)](https://github.com/swiftlang/swift-markdown)
+[![CI](https://github.com/kevinave/md-quicklook/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinave/md-quicklook/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 <br/>
