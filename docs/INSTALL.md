@@ -145,7 +145,7 @@ mdls -name kMDItemContentType <file>.md
 
 This project handles `net.daringfireball.markdown`. Other extensions such as
 `.mdx` or `.qmd` resolve to `dyn.*` identifiers and are not handled; see the
-trade-offs section of [`docs/decisions.md`](../docs/decisions.md).
+trade-offs section of [`docs/decisions.md`](decisions.md).
 
 **Previews are stale after a rebuild.** Repeat step 2 in full. The unregister is
 the part that gets skipped and is usually the cause.
