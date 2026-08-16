@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📄 md-quicklook
+# 👀 md-quicklook
 
 ### Press space on a `.md` file in Finder and read it rendered, not as source.
 
@@ -33,7 +33,7 @@ anything that renders it, so Quick Look falls back to plain text. This fills tha
 | 🎨 | **Syntax-highlighted code, offline** — highlight.js is inlined, never fetched |
 | 🏷️ | **YAML front matter as metadata**, instead of being mangled into a heading |
 | 🌓 | **Light and dark**, following the system |
-| 🈶 | **Non-UTF-8 files decoded** rather than turned into mojibake — including GB18030 |
+| 🌍 | **Non-UTF-8 files decoded** rather than turned into mojibake — including GB18030 |
 | 🔒 | **One entitlement in the extension:** `com.apple.security.app-sandbox` |
 
 ---
