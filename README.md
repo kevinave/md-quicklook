@@ -1,6 +1,6 @@
 <div align="center">
 
-# 👀 md-quicklook
+# 🔍 md-quicklook
 
 ### Press space on a `.md` file in Finder and read it rendered, not as source.
 
@@ -67,7 +67,12 @@ process. Everything else follows from that.
 > Extensions that host their own WebView need a read exception over the home directory — or the whole
 > file system — just to load an image. This one needs no file entitlement at all.
 
-Two more consequences of keeping the machinery thin:
+---
+
+<details>
+<summary><b>Two more consequences of keeping the machinery thin</b></summary>
+
+<br/>
 
 **One Markdown implementation.** The extension and the `mdql` CLI both go through `MarkdownRenderer`,
 so nothing re-parses Markdown by hand, and nested emphasis, `**` inside inline code, escapes and
@@ -80,7 +85,7 @@ here.
 
 The reasoning and the known trade-offs are in [`docs/decisions.md`](docs/decisions.md).
 
----
+</details>
 
 <details>
 <summary><b>Install</b> — no signed release; build it yourself</summary>
