@@ -2,6 +2,10 @@
 
 Press the spacebar on a `.md` file in Finder and read it rendered, not as source.
 
+[![macOS](https://img.shields.io/badge/macOS-13+-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
+[![Swift](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white)](https://swift.org)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 ![Selecting Markdown files in Finder and pressing space to see them rendered, with headings, code blocks, tables and task lists](assets/markdown-quicklook-demo.gif)
 
 > The recording above is inherited from the upstream project and predates the
@@ -19,10 +23,6 @@ A single Quick Look extension, plus a small menu bar app that exists to host and
 register it, plus `mdql` — a command line tool that runs the same renderer, which
 is what makes the rendering testable without Finder in the loop.
 
-The repository is `md-quicklook`; the app it builds is `MarkdownQuickLook.app`
-and the bundle identifier is `com.kevinave.mdquicklook`. Those spellings are
-deliberate, not leftovers.
-
 - Rendered previews for `.md` and `.markdown`: headings, tables, task lists,
   nested blockquotes, footnotes, GitHub-flavoured everything
 - Syntax highlighted code blocks, offline — highlight.js is inlined, not fetched
@@ -31,9 +31,11 @@ deliberate, not leftovers.
 - Non-UTF-8 files decoded rather than turned into mojibake — including GB18030
 - **One entitlement in the preview extension: `com.apple.security.app-sandbox`**
 
-## Install
+<details>
+<summary><b>Install</b> — no signed release; build it yourself</summary>
 
-There is no signed release. Build it:
+<br/>
+
 
 ```bash
 brew install xcodegen
@@ -60,6 +62,8 @@ press space.
 `CODE_SIGN_IDENTITY="-"` is ad-hoc signing, which is enough to run on the machine
 that built it. Substitute a Developer ID if you want to hand the app to someone
 else, or the recipient will meet Gatekeeper.
+
+</details>
 
 ## How it works
 
@@ -98,7 +102,10 @@ policy is better than one invented here.
 The reasoning behind these and the known trade-offs are in
 [`docs/decisions.md`](docs/decisions.md).
 
-## Development
+<details>
+<summary><b>Development</b></summary>
+
+<br/>
 
 ```bash
 swift test                                   # renderer tests, no Finder needed
@@ -109,11 +116,13 @@ swift run mdql Examples/inline-torture.md out.html
 servicing extension requests. Use `mdql` to check rendering and Finder to check
 integration.
 
+</details>
+
 ## Relationship to the upstream project
 
-Forked in spirit, not on GitHub, from
-[jzone3/markdown-quicklook](https://github.com/jzone3/markdown-quicklook) (MIT),
-whose commits are preserved in this repository's history. Three things changed:
+This started from [jzone3/markdown-quicklook](https://github.com/jzone3/markdown-quicklook)
+(MIT). It is not a GitHub fork — the code was carried into a fresh repository — but the
+upstream commits are preserved in this repository's history. Three things changed:
 
 | | upstream | here |
 |---|---|---|
