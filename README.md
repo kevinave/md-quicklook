@@ -89,9 +89,20 @@ The reasoning and the known trade-offs are in [`docs/decisions.md`](docs/decisio
 </details>
 
 <details>
-<summary><b>Install</b> — no signed release; build it yourself</summary>
+<summary><b>Install</b> — download the .dmg, or build from source</summary>
 
 <br/>
+
+**Download.** Grab
+[`MarkdownQuickLook.dmg`](https://github.com/kevinave/md-quicklook/releases/latest/download/MarkdownQuickLook.dmg)
+from the [latest release](https://github.com/kevinave/md-quicklook/releases/latest), open it, and
+drag the app into `/Applications`. The release is built in CI and ad-hoc signed — there is no
+Developer ID behind it — so Gatekeeper stops the first launch. Approve it once under **System
+Settings → Privacy & Security → "Open Anyway"** and launch again; the approval is remembered from
+then on.
+
+**Or build from source**, which sidesteps that dialog — an ad-hoc signature is trusted on the
+machine that made it:
 
 ```bash
 brew install xcodegen
@@ -106,16 +117,13 @@ cp -R .build-xcode/Build/Products/Release/MarkdownQuickLook.app /Applications/
 open /Applications/MarkdownQuickLook.app
 ```
 
-Launching it once is what registers the extension. Confirm with:
+Either way, launching the app once is what registers the extension. Confirm with:
 
 ```bash
 pluginkit -mAvvv -i com.kevinave.mdquicklook.QuickLookExtension
 ```
 
 A leading `+` means registered and enabled. Then select a `.md` file in Finder and press space.
-
-`CODE_SIGN_IDENTITY="-"` is ad-hoc signing, which is enough to run on the machine that built it.
-Substitute a Developer ID to hand the app to someone else, or the recipient will meet Gatekeeper.
 
 </details>
 
